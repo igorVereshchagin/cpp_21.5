@@ -77,6 +77,7 @@ int add()
 {
   record_t rec;
   std::cout << "Input name: " << std::endl;
+  std::cin >> std::ws;
   std::getline(std::cin, rec.name);
   if (!input_date(rec))
   {
