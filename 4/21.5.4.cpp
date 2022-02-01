@@ -14,7 +14,68 @@ struct personage_t
   int pos_y;
 };
 
-int input_int(const std::string &msg, int min = INT_MIN, int max = INT_MAX)
+
+enum direction_t
+{
+  dir_left = 0,
+  dir_right,
+  dir_top,
+  dir_bottom
+};
+
+int input_int(const std::string &msg, int min = INT_MIN, int max = INT_MAX);
+void input_personage(personage_t &pers);
+void generate_personage(personage_t &pers, const std::string &name);
+void place_personage(personage_t &pers);
+void show(personage_t players[6]);
+bool is_collision(personage_t &pers, int dx, int dy, personage_t players[6], personage_t **victim);
+void move(personage_t &pers, const direction_t &dir, personage_t players[6]);
+
+
+
+int main()
+{
+  personage_t players[6];
+  std::srand(time(nullptr));
+  input_personage(players[0]);
+  for (int i = 1; i < 6; i++)
+    generate_personage(players[i], "Enemy #" + std::to_string(i));
+  for (int i = 0; i < 6; i++)
+    place_personage(players[i]);
+  while ((players[0].health > 0) &&
+    ((players[1].health > 0) || (players[2].health > 0) || (players[3].health > 0) ||
+     (players[4].health > 0) || (players[5].health > 0)))
+  {
+    char c;
+    show(players);
+    std::cout << players[0].name << "'s turn" << std::endl;
+    std::cin >> c;
+    direction_t dir;
+    if (c == 'l')
+      dir = dir_left;
+    else if (c == 'r')
+      dir = dir_right;
+    else if (c == 't')
+      dir = dir_top;
+    else if (c == 'b')
+      dir = dir_bottom;
+    else
+      continue;
+    move(players[0], dir, players);
+    for (int i = 1; i < 6; i++)
+    {
+      dir = (direction_t)(std::rand() % 4);
+      move(players[i], dir, players);
+    }
+  }
+  if (players[0].health > 0)
+    std::cout << players[0].name << " WON!" << std::endl;
+  else
+    std::cout << players[0].name << " LOST!" << std::endl;
+  return 0;
+}
+
+int input_int(const std::string &msg, int min, int max)
 {
   int input;
   do
@@ -64,36 +125,74 @@ void show(personage_t players[6])
       field_buf[i][j] = '.';
     field_buf[i][40] = 0;
   }
-  field_buf[players[0].pos_y][players[0].pos_x] = 'P';
+  if (players[0].health > 0)
+    field_buf[players[0].pos_y][players[0].pos_x] = 'P';
   for (int i = 1; i < 6; i++)
-    field_buf[players[i].pos_y][players[i].pos_x] = 'E';
+  {
+    if (players[i].health > 0)
+      field_buf[players[i].pos_y][players[i].pos_x] = 'E';
+  }
   for (int i = 0; i < 40; i++)
     std::cout << field_buf[i] << std::endl;
   for (int i = 0; i < 6; i++)
-    std::cout << players[i].name << ": H:" << players[i].health << "  A:" << players[i].armor << std::endl;
+    std::cout << players[i].name << ": H:" << players[i].health << "  A:" << players[i].armor << "  S: " << players[i].strength << std::endl;
 }
 
-enum direction_t
+bool is_collision(personage_t &pers, int dx, int dy, personage_t players[6], personage_t **victim)
 {
-  dir_left = 0,
-  dir_right,
-  dir_top,
-  dir_bottom
-};
-
-void move(personage_t &pers, const direction_t &dir)
-{
-
+  bool collision = false;
+  for (int i = 0; !collision && i < 6; i++)
+  {
+    if (&pers == &players[i])
+      continue;
+    if ((players[i].health > 0) && (((pers.pos_x + dx) == players[i].pos_x) && ((pers.pos_y + dy) == players[i].pos_y)))
+    {
+      collision = true;
+      *victim = &players[i];
+    }
+  }
+  return collision;
 }
 
-int main()
+void move(personage_t &pers, const direction_t &dir, personage_t players[6])
 {
-  personage_t players[6];
-  input_personage(players[0]);
-  for (int i = 1; i < 6; i++)
-    generate_personage(players[i], "Enemy #" + std::to_string(i));
-  for (int i = 0; i < 6; i++)
-    place_personage(players[i]);
-  show(players);
-  return 0;
+  int dx = 0;
+  int dy = 0;
+  if (dir == dir_left)
+    dx = -1;
+  else if (dir == dir_right)
+    dx = 1;
+  else if (dir == dir_top)
+    dy = -1;
+  else if (dir == dir_bottom)
+    dy = 1;
+
+  if ((pers.pos_x + dx >= 0) && (pers.pos_x + dx < 40) && (pers.pos_y + dy >= 0) && (pers.pos_y + dy < 40))
+  {
+    personage_t *victim = nullptr;
+    if (is_collision(pers, dx, dy, players, &victim))
+    {
+      if (pers.enemy != victim->enemy)
+      {
+        std::cout << victim->name << " took damage: -" << pers.strength << std::endl;
+        victim->armor -= pers.strength;
+        if (victim->armor < 0)
+        {
+          victim->health += victim->armor;
+          victim->armor = 0;
+          if (victim->health < 0)
+          {
+            victim->pos_x = -1;
+            victim->pos_y = -1;
+          }
+        }
+      }
+    }
+    else
+    {
+      pers.pos_x += dx;
+      pers.pos_y += dy;
+    }
+  }
+
 }
