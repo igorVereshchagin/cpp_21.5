@@ -2,6 +2,7 @@
 #include <string>
 #include <ctime>
 #include <cstdlib>
+#include <fstream>
 
 struct personage_t
 {
@@ -46,19 +47,82 @@ int main()
     ((players[1].health > 0) || (players[2].health > 0) || (players[3].health > 0) ||
      (players[4].health > 0) || (players[5].health > 0)))
   {
-    char c;
+    std::string cmd;
     show(players);
     std::cout << players[0].name << "'s turn" << std::endl;
-    std::cin >> c;
+    std::cin >> cmd;
     direction_t dir;
-    if (c == 'l')
+    if (cmd == "l")
       dir = dir_left;
-    else if (c == 'r')
+    else if (cmd == "r")
       dir = dir_right;
-    else if (c == 't')
+    else if (cmd == "t")
       dir = dir_top;
-    else if (c == 'b')
+    else if (cmd == "b")
       dir = dir_bottom;
+    else if (cmd == "save")
+    {
+      std::string fname;
+      std::cout << "Input save name: " << std::endl;
+      std::cin >> fname;
+      std::ofstream savefile(fname, std::ios::binary);
+      if (!savefile.is_open())
+      {
+        std::cout << "Invalid name" << std::endl;
+        continue;
+      }
+      int magick_head = 0x00210504;
+      savefile.write((char*)&magick_head, sizeof(magick_head));
+      for (int i = 0; i < 6; i++)
+      {
+        int namelen = players[i].name.length();
+        savefile.write((char*)&namelen, sizeof(namelen));
+        savefile.write(players[i].name.c_str(), namelen);
+        savefile.write((char*)&players[i].health, sizeof(players[i].health));
+        savefile.write((char*)&players[i].armor, sizeof(players[i].armor));
+        savefile.write((char*)&players[i].strength, sizeof(players[i].strength));
+        savefile.write((char*)&players[i].enemy, sizeof(players[i].enemy));
+        savefile.write((char*)&players[i].pos_x, sizeof(players[i].pos_x));
+        savefile.write((char*)&players[i].pos_y, sizeof(players[i].pos_y));
+      }
+      savefile.close();
+      continue;
+    }
+    else if (cmd == "load")
+    {
+      std::string fname;
+      std::cout << "Input saved name: " << std::endl;
+      std::cin >> fname;
+      std::ifstream loadfile(fname, std::ios::binary);
+      if (!loadfile.is_open())
+      {
+        std::cout << "Invalid name" << std::endl;
+        continue;
+      }
+      int magick_head;
+      loadfile.read((char*)&magick_head, sizeof(magick_head));
+      if (magick_head != 0x00210504)
+      {
+        std::cout << "Invalid file format" << std::endl;
+        loadfile.close();
+        continue;
+      }
+      for (int i = 0; i < 6; i++)
+      {
+        int namelen = players[i].name.length();
+        loadfile.read((char*)&namelen, sizeof(namelen));
+        players[i].name.resize(namelen);
+        loadfile.read((char*)players[i].name.c_str(), namelen);
+        loadfile.read((char*)&players[i].health, sizeof(players[i].health));
+        loadfile.read((char*)&players[i].armor, sizeof(players[i].armor));
+        loadfile.read((char*)&players[i].strength, sizeof(players[i].strength));
+        loadfile.read((char*)&players[i].enemy, sizeof(players[i].enemy));
+        loadfile.read((char*)&players[i].pos_x, sizeof(players[i].pos_x));
+        loadfile.read((char*)&players[i].pos_y, sizeof(players[i].pos_y));
+      }
+      loadfile.close();
+      continue;
+    }
     else
       continue;
     move(players[0], dir, players);
